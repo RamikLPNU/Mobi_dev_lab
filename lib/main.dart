@@ -33,7 +33,7 @@ class _GridScreenState extends State<GridScreen> {
       for (String part in parts) {
         int? value = int.tryParse(part);
         if (value == null || value > 9999) {
-          errorMessage = 'Введіть числа від 0 до 9999';
+          errorMessage = 'Введіть числа від 0 до 4999';
           return;
         }
         String strValue = value.toString();
