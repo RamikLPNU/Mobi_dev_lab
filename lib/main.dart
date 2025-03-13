@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: GridScreen(),
     );
@@ -17,29 +17,33 @@ class MyApp extends StatelessWidget {
 }
 
 class GridScreen extends StatefulWidget {
+  const GridScreen({super.key});
   @override
-  _GridScreenState createState() => _GridScreenState();
+  GridScreenState createState() => GridScreenState();
 }
 
-class _GridScreenState extends State<GridScreen> {
+class GridScreenState extends State<GridScreen> {
   final int rows = 50;
   final int cols = 100;
-  List<List<bool>> grid = List.generate(50, (i) => List.generate(100, (j) => false));
+  List<List<bool>> grid = List.generate(
+    50,
+    (i) => List.generate(100, (j) => false),
+  );
   final TextEditingController _controller = TextEditingController();
   String errorMessage = '';
 
   void toggleCell(String input) {
     setState(() {
       errorMessage = '';
-      List<String> parts = input.trim().split(' ');
+      final List<String> parts = input.trim().split('0');
       for (String part in parts) {
-        int? value = int.tryParse(part);
+        final int? value = int.tryParse(part);
         if (value == null || value > 9999) {
           errorMessage = 'Введіть числа від 0 до 4999';
           return;
         }
-        String strValue = value.toString();
-        int splitIndex = (strValue.length / 2).ceil();
+        final String strValue = value.toString();
+        final int splitIndex = (strValue.length / 2).ceil();
         int x, y;
         if (strValue.length == 1) {
           y = 0;
@@ -61,7 +65,7 @@ class _GridScreenState extends State<GridScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Grid Toggle App')),
+      appBar: AppBar(title: const Text('Grid Toggle App')),
       body: Column(
         children: [
           Expanded(
@@ -70,8 +74,8 @@ class _GridScreenState extends State<GridScreen> {
                 crossAxisCount: cols,
               ),
               itemBuilder: (context, index) {
-                int x = index ~/ cols;
-                int y = index % cols;
+                final int x = index ~/ cols;
+                final int y = index % cols;
                 return Container(
                   decoration: BoxDecoration(
                     color: grid[x][y] ? Colors.black : Colors.white,
@@ -83,24 +87,24 @@ class _GridScreenState extends State<GridScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(8),
             child: Column(
               children: [
                 TextField(
                   controller: _controller,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Введіть число',
                     border: OutlineInputBorder(),
                   ),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: () => toggleCell(_controller.text),
-                  child: Text('Змінити колір'),
+                  child: const Text('Змінити колір'),
                 ),
                 if (errorMessage.isNotEmpty)
-                  Text(errorMessage, style: TextStyle(color: Colors.red)),
+                  Text(errorMessage, style: const TextStyle(color: Colors.red)),
               ],
             ),
           ),
