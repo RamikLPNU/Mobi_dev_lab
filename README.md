@@ -1,5 +1,5 @@
 # my_project
-# Lab_1
+# Lab_2
 
 A new Flutter project.
 
