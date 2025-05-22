@@ -8,7 +8,7 @@ class RegisterScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -27,7 +27,7 @@ class RegisterScreen extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Already have an account? Login"),
+                child: const Text('Already have an account? Login'),
               ),
             ],
           ),

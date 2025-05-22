@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/sleep_stats.dart';
+import 'package:my_project/widgets/sleep_stats.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

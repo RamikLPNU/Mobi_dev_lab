@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'register_screen.dart';
+import 'package:my_project/screens/home_screen.dart';
+import 'package:my_project/screens/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,8 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   String? errorMessage;
 
   void _login() {
-    String email = _emailController.text.trim();
-    String password = _passwordController.text;
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
       setState(() => errorMessage = 'Email and password cannot be empty.');
@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => errorMessage = null);
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute<HomeScreen>(builder: (_) => const HomeScreen()),
     );
   }
 
@@ -59,10 +59,12 @@ class _LoginScreenState extends State<LoginScreen> {
             TextButton(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                MaterialPageRoute<RegisterScreen>(builder: (_) =>
+                const RegisterScreen(),
+                ),
               ),
               child: const Text("Don't have an account yet? Sign up"),
-            )
+            ),
           ],
         ),
       ),
