@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:my_project/models/user.dart';
 import 'package:my_project/screens/home_screen.dart';
 import 'package:my_project/screens/register_screen.dart';
+import 'package:my_project/storage/shared_prefs_storage.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,9 +14,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final SharedPrefsStorage _storage = SharedPrefsStorage();
+
   String? errorMessage;
 
-  void _login() {
+  void _login() async {
     final String email = _emailController.text.trim();
     final String password = _passwordController.text;
 
@@ -23,10 +27,23 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    final User? savedUser = await _storage.loadUser();
+
+    if (savedUser == null) {
+      setState(() => errorMessage = 'No registered user found.');
+      return;
+    }
+
+    if (email != savedUser.email || password != savedUser.password) {
+      setState(() => errorMessage = 'Invalid email or password.');
+      return;
+    }
+
     setState(() => errorMessage = null);
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute<HomeScreen>(builder: (_) => const HomeScreen()),
+      MaterialPageRoute<Widget>(builder: (_) => const HomeScreen()),
     );
   }
 
@@ -50,19 +67,25 @@ class _LoginScreenState extends State<LoginScreen> {
               obscureText: true,
             ),
             if (errorMessage != null)
-              Text(errorMessage!, style: const TextStyle(color: Colors.red)),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                ),
+              ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _login,
               child: const Text('Login'),
             ),
             TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<RegisterScreen>(builder: (_) =>
-                const RegisterScreen(),
-                ),
-              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<Widget>
+                    (builder: (_) => const RegisterScreen()),
+                );
+              },
               child: const Text("Don't have an account yet? Sign up"),
             ),
           ],
