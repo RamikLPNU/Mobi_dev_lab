@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
@@ -6,7 +7,8 @@ class MqttService {
   final _client = MqttServerClient('test.mosquitto.org', '');
   final _topic = 'sleep_tracker/status';
 
-  final StreamController<String> _messageController = StreamController<String>.broadcast();
+  final StreamController<String> _messageController =
+  StreamController<String>.broadcast();
   Stream<String> get messages => _messageController.stream;
 
   Future<void> connect() async {
@@ -16,7 +18,8 @@ class MqttService {
     _client.onDisconnected = _onDisconnected;
 
     final connMessage = MqttConnectMessage()
-        .withClientIdentifier('flutter_client_${DateTime.now().millisecondsSinceEpoch}')
+        .withClientIdentifier('flutter_client_${DateTime.now().
+    millisecondsSinceEpoch}')
         .startClean();
 
     _client.connectionMessage = connMessage;
@@ -29,7 +32,8 @@ class MqttService {
 
     _client.updates?.listen((List<MqttReceivedMessage<MqttMessage>> c) {
       final recMess = c[0].payload as MqttPublishMessage;
-      final message = MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+      final message = MqttPublishPayload.bytesToStringAsString
+        (recMess.payload.message);
 
       _messageController.add(message);
     });
@@ -40,7 +44,7 @@ class MqttService {
   }
 
   void _onDisconnected() {
-    print('Disconnected');
+    developer.log('Disconnected');
   }
 
   void disconnect() {
