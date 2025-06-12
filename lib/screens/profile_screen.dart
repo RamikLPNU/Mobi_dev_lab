@@ -32,7 +32,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _logout() async {
-    await _storage.clearUser();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
