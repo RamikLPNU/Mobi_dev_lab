@@ -1,9 +1,18 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:my_project/models/sleep_entry.dart';
+import 'package:my_project/services/mqtt_service.dart';
 import 'package:my_project/storage/sleep_storage.dart';
+import 'package:my_project/widgets/connection_status_banner.dart';
+import 'package:my_project/widgets/device_connection_section.dart';
+import 'package:my_project/widgets/edit_sleep_entry_dialog.dart';
+import 'package:my_project/widgets/recommended_wake_time.dart';
 import 'package:my_project/widgets/sleep_chart.dart';
 import 'package:my_project/widgets/sleep_history_list.dart';
 import 'package:my_project/widgets/sleep_input_buttons.dart';
+
 
 
 class HomeScreen extends StatefulWidget {
@@ -13,122 +22,51 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class EditSleepEntryDialog extends StatefulWidget {
-  final SleepEntry entry;
-  const EditSleepEntryDialog({required this.entry, super.key});
-
-  @override
-  State<EditSleepEntryDialog> createState() => _EditSleepEntryDialogState();
-}
-
-class _EditSleepEntryDialogState extends State<EditSleepEntryDialog> {
-  late DateTime _sleepTime;
-  late DateTime _wakeTime;
-
-  @override
-  void initState() {
-    super.initState();
-    _sleepTime = widget.entry.sleepTime;
-    _wakeTime = widget.entry.wakeTime;
-  }
-
-  Future<void> _pickSleepTime() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _sleepTime,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      if (!mounted) return;
-
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_sleepTime),
-      );
-      if (time != null) {
-        setState(() {
-          _sleepTime = DateTime(
-              picked.year, picked.month, picked.day,
-              time.hour, time.minute,
-            );
-        });
-      }
-    }
-  }
-
-  Future<void> _pickWakeTime() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _wakeTime,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      if (!mounted) return;
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_wakeTime),
-      );
-      if (time != null) {
-        setState(() {
-          _wakeTime = DateTime(picked.year, picked.month, picked.day,
-              time.hour, time.minute,
-          );
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Редагувати запис сну'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextButton(
-            onPressed: _pickSleepTime,
-            child: Text('Час засинання: $_sleepTime'),
-          ),
-          TextButton(
-            onPressed: _pickWakeTime,
-            child: Text('Час пробудження: $_wakeTime'),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child:
-          const Text('Скасувати'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context,
-              SleepEntry(sleepTime: _sleepTime, wakeTime: _wakeTime),
-          ),
-          child: const Text('Зберегти'),
-        ),
-      ],
-    );
-  }
-}
-
-
 class _HomeScreenState extends State<HomeScreen> {
   final SleepStorage _storage = SleepStorage();
+  final MqttService _mqttService = MqttService();
+
   List<SleepEntry> _entries = [];
   DateTime? _tempSleepTime;
+
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+  bool _isConnected = false;
+
+  bool _isDeviceConnected = false;
+  String _currentState = 'Невідомо';
 
   @override
   void initState() {
     super.initState();
     _loadEntries();
+    _startListening();
+    _checkInitialConnection();
+  }
+
+  void _startListening() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+            (results) {
+      final hasConnection = results.contains(ConnectivityResult.wifi) ||
+          results.contains(ConnectivityResult.mobile);
+      setState(() => _isConnected = hasConnection);
+    });
+  }
+
+  Future<void> _checkInitialConnection() async {
+    final result = await Connectivity().checkConnectivity();
+    final hasConnection = !result.contains(ConnectivityResult.none);
+    setState(() => _isConnected = hasConnection);
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
   }
 
   Future<void> _loadEntries() async {
     final data = await _storage.loadEntries();
-    setState(() {
-      _entries = data;
-    });
+    setState(() => _entries = data);
   }
 
   Future<void> _saveEntries() async {
@@ -152,9 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    final newEntry = SleepEntry(
-      sleepTime: _tempSleepTime!,
-      wakeTime: DateTime.now(),
+    final newEntry = SleepEntry(sleepTime: _tempSleepTime!,
+        wakeTime: DateTime.now(),
     );
 
     setState(() {
@@ -185,21 +122,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
   void _clearHistory() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Очистити історію?'),
-        content: const Text('Це дію неможливо скасувати.'),
+        content: const Text('Цю дію неможливо скасувати.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Скасувати'),
+          TextButton(onPressed: () => Navigator.pop(context, false),
+              child: const Text('Скасувати'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Очистити'),
+          TextButton(onPressed: () => Navigator.pop(context, true),
+              child: const Text('Очистити'),
           ),
         ],
       ),
@@ -215,30 +149,60 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildRecommendedTime() {
-    if (_entries.isEmpty) return const SizedBox();
+  void _connectDevice() async {
+    await _mqttService.connect();
+    _mqttService.subscribe();
+    _mqttService.messages.listen((message) {
+      final data = jsonDecode(message);
+      final state = data['state'];
+      final time = DateTime.parse(data['time'].toString());
 
-    final avgDuration = _entries
-        .map((e) => e.duration.inMinutes)
-        .reduce((a, b) => a + b) ~/
-        _entries.length;
+      if (state == 'sleeping') {
+        _addSleepEntry(time, null);
+      } else if (state == 'awake') {
+        _updateLastSleepEntry(time);
+      }
 
-    final recommendation = DateTime.now().add(Duration(minutes: avgDuration));
-    final formattedTime =
-        '${recommendation.hour.toString().padLeft(2, '0')}:'
-        '${recommendation.minute.toString().padLeft(2, '0')}';
+      setState(() {
+        _currentState = state == 'sleeping' ? 'Спить' : 'Прокинувся';
+      });
+    });
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Рекомендований час для пробудження:',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(formattedTime, style: const TextStyle(fontSize: 16)),
-      ],
+    setState(() {
+      _isDeviceConnected = true;
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Годинник підключено')),
     );
+  }
+
+  void _addSleepEntry(DateTime start, DateTime? end) {
+    final alreadyExists = _entries.any((entry) => entry.sleepTime == start);
+
+    if (!alreadyExists) {
+      final newEntry = SleepEntry(sleepTime: start, wakeTime: end ??
+          DateTime.now(),
+      );
+      setState(() {
+        _entries.add(newEntry);
+      });
+      _saveEntries();
+    }
+  }
+
+  void _updateLastSleepEntry(DateTime end) {
+    if (_entries.isEmpty) return;
+
+    final lastEntry = _entries.last;
+    if (lastEntry.wakeTime == end) return;
+
+    setState(() {
+      final last = _entries.removeLast();
+      _entries.add(SleepEntry(sleepTime: last.sleepTime, wakeTime: end));
+    });
+    _saveEntries();
   }
 
   @override
@@ -247,14 +211,11 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Розумний будильник'),
         actions: [
-          IconButton(
-            onPressed: _clearHistory,
-            icon: const Icon(Icons.delete),
-            tooltip: 'Очистити історію',
+          IconButton(onPressed: _clearHistory, icon: const Icon(Icons.delete),
+              tooltip: 'Очистити історію',
           ),
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () => Navigator.pushNamed(context, '/profile'),
+          IconButton(icon: const Icon(Icons.person), onPressed: () =>
+              Navigator.pushNamed(context, '/profile'),
           ),
         ],
       ),
@@ -263,21 +224,24 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            ConnectionStatusBanner(isConnected: _isConnected),
             SleepChart(entries: _entries),
             const SizedBox(height: 20),
-            _buildRecommendedTime(),
+            RecommendedWakeTime(entries: _entries),
             const SizedBox(height: 20),
-            SleepInputButtons(
-              onSleep: _onSleep,
-              onWake: _onWake,
+            SleepInputButtons(onSleep: _onSleep, onWake: _onWake),
+            const SizedBox(height: 20),
+            DeviceConnectionSection(
+              isDeviceConnected: _isDeviceConnected,
+              currentState: _currentState,
+              onConnect: _connectDevice,
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Історія сну:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const Text('Історія сну:', style: TextStyle(fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 10),
-            SleepHistoryList(entries: _entries,onEdit: _editEntry),
+            SleepHistoryList(entries: _entries, onEdit: _editEntry),
           ],
         ),
       ),
