@@ -23,11 +23,11 @@ class MyApp extends StatelessWidget {
       final isConnected = await connectivityService.checkConnection();
 
       if (!isConnected) {
-        // Якщо немає Інтернету, покажемо попередження, але впустимо в додаток
-        Future.microtask(() {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No Internet connection. Some features may not work.'),
+              content: Text
+                ('No Internet connection. Some features may not work.'),
             ),
           );
         });
